@@ -1,12 +1,10 @@
-
-
 from scapy.all import *
 from scapy.layers.dot15d4 import *
 from scapy.layers.zigbee import *
 
 conf.dot15d4_protocol = "zigbee"
 
-filereader = PcapReader("./FirstCapture.pcap")
+filereader = PcapReader("./captures/FirstCapture.pcap")
 count = 1
 for pkt in filereader:
     valid = False
