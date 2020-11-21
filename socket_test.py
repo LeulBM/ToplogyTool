@@ -11,6 +11,7 @@ count = 1
 def analyze_print_pkt(newpkt):
     valid = False
     src = ext_src = dest = panid = None
+    global count
 
     if newpkt.haslayer(UDP) and newpkt[UDP].dport == 52001:
         pkt = Dot15d4FCS(newpkt.load)
@@ -33,11 +34,10 @@ def analyze_print_pkt(newpkt):
 
         if valid:
             if ext_src is None:
-                print("%i \t source: %s, extended source: %s,\t\t\t\t\t\t dest: %s, PAN ID: %s" % (count, src, ext_src, dest, panid))
+                print("%i \t source: %s, extended source: %s,\t\t\t\t dest: %s, PAN ID: %s" % (count, src, ext_src, dest, panid))
             else:
                 print("%i \t source: %s, extended source: %s,\t dest: %s, PAN ID: %s" % (count, src, ext_src, dest, panid))
 
-        global count
         count += 1
 
 
