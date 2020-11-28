@@ -58,19 +58,24 @@ def createDBSession():
     session = Session()
     return session
 
-def createDevice(session,pan_id,source_id,extended_source_id=None):
-    exsisting_device = queryDevice(session,pan_id,source_id,extended_source_id)
-    if exsisting_device is not None:
-        return exsisting_device
-    if extended_source_id is None:
-        device = Devices(pan_id=pan_id,source_id=source_id)
-    else:
-        device = Devices(pan_id=pan_id,source_id=source_id,extended_source_id=extended_source_id)
-    session.add(device)
+def createPacket(session,packet_time,pan_id,source_id,destination_id,extended_source_id=None,network_source_id=None,network_extended_source_id=None):
+    packet = Packets(packet_time=packet_time, pan_id=pan_id, source_id=source_id, destination_id=destination_id, extended_source_id=extended_source_id, network_source_id=network_source_id, network_extended_source_id=network_extended_source_id)
+    session.add(packet)
     session.commit()
-    return device
+    return packet
+
+def queryPacket(session):
+    packet = session.query(Packets).filter_by(parsed=False).order_by(Packets.packet_id.asc()).first()
+    return map_entry
+
+def parsedPacket(session,packet):
+    packet.parsed = True
+    session.commit()
 
 def createMapEntry(session,pan_id,source_device,destination_device):
+    existing_device = queryMapEntry(session,pan_id,source_device,destination_device)
+    if existing_device is not None:
+        return existing_device
     map_entry = MapEntries(pan_id=pan_id,source_device_id=source_device.device_id,destination_device_id=destination_device.device_id)
     session.add(map_entry)
     session.commit()
@@ -90,13 +95,25 @@ def createAlert(session,message):
     session.commit()
     return alert
 
-def queryAlert(session,pan_id,source_device,destination_device):
-    alert = session.query(Alerts).filter_by(message=message).first()
-    return alert
+def queryAlerts(session):
+    alerts = session.query(Alerts).filter_by(read=False).all()
+    return alerts
 
 def readAlert(session,alert):
     alert.read = True
     session.commit()
+
+def createDevice(session,pan_id,source_id,extended_source_id=None):
+    existing_device = queryDevice(session,pan_id,source_id,extended_source_id)
+    if existing_device is not None:
+        return existing_device
+    if extended_source_id is None:
+        device = Devices(pan_id=pan_id,source_id=source_id)
+    else:
+        device = Devices(pan_id=pan_id,source_id=source_id,extended_source_id=extended_source_id)
+    session.add(device)
+    session.commit()
+    return device
 
 def queryDevice(session,pan_id=None,source_id=None,extended_source_id=None):
     if extended_source_id is None and pan_id is not None and extended_source_id is not None:
