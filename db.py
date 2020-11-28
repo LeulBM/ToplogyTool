@@ -26,8 +26,9 @@ class MapEntries(Base):
     source_device_id = Column(Integer, ForeignKey("devices.device_id"))
     destination_device_id = Column(Integer, ForeignKey("devices.device_id"))
     created = Column(DateTime,default=datetime.datetime.utcnow)
+    valid = Column(Boolean,default=True)
     def __str__(self):
-        return f"Entry ID: {self.entry_id}, PAN ID: {self.pan_id}, Source Device ID: {self.source_device_id}, Destination Device ID: {self.destination_device_id}, Created: {self.created}"
+        return f"Entry ID: {self.entry_id}, PAN ID: {self.pan_id}, Source Device ID: {self.source_device_id}, Destination Device ID: {self.destination_device_id}, Created: {self.created}, Valid: {self.valid}"
 
 class Devices(Base):
     __tablename__ = "devices"
@@ -74,6 +75,28 @@ def createMapEntry(session,pan_id,source_device,destination_device):
     session.add(map_entry)
     session.commit()
     return map_entry
+
+def queryMapEntry(session,pan_id,source_device,destination_device):
+    map_entry = session.query(MapEntries).filter_by(pan_id=pan_id,source_device_id=source_device.device_id,destination_device_id=destination_device.device_id).first()
+    return map_entry
+
+def invalidateMapEntry(session,entry):
+    entry.valid = False
+    session.commit()
+
+def createAlert(session,message):
+    alert = Alerts(message=message)
+    session.add(alert)
+    session.commit()
+    return alert
+
+def queryAlert(session,pan_id,source_device,destination_device):
+    alert = session.query(Alerts).filter_by(message=message).first()
+    return alert
+
+def readAlert(session,alert):
+    alert.read = True
+    session.commit()
 
 def queryDevice(session,pan_id=None,source_id=None,extended_source_id=None):
     if extended_source_id is None and pan_id is not None and extended_source_id is not None:
