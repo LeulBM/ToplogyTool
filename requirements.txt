@@ -1,2 +1,2 @@
-scapy
-sqlalchemy
+scapy==2.4.4
+SQLAlchemy==1.3.20
