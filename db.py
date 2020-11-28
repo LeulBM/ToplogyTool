@@ -13,10 +13,11 @@ class Packets(Base):
     source_id = Column(String)
     destination_id = Column(String)
     extended_source_id = Column(String)
+    network_source_id = Column(String)
     network_extended_source_id = Column(String)
     parsed = Column(Boolean,default=False)
     def __str__(self):
-        return f"Packet ID: {self.packet_id}, Packet Time: {self.packet_time}, PAN ID: {self.pan_id}, Source ID: {self.source_id}, Destination ID: {self.destination_id}, Extended Source ID: {self.extended_source_id}, Network Extended Source ID {self.network_extended_source_id}, Parsed: {self.parsed}"
+        return f"Packet ID: {self.packet_id}, Packet Time: {self.packet_time}, PAN ID: {self.pan_id}, Source ID: {self.source_id}, Destination ID: {self.destination_id}, Extended Source ID: {self.extended_source_id}, Network Source ID: {self.network_source_id},Network Extended Source ID {self.network_extended_source_id}, Parsed: {self.parsed}"
 
 class MapEntries(Base):
     __tablename__ = "map_entries"
@@ -81,6 +82,10 @@ def queryDevice(session,pan_id=None,source_id=None,extended_source_id=None):
         device = session.query(Devices).filter_by(extended_source_id=extended_source_id).first()
     return device
 
+def queryPANDevices(session,pan_id):
+    devices = session.query(Devices).filter_by(pan_id=pan_id).all()
+    return devices
+
 def modifyDevice(session,device,pan_id=None,source_id=None,extended_source_id=None):
     if extended_source_id is not None:
         check_device = queryDevice(session=session,extended_source_id=extended_source_id)
@@ -93,8 +98,6 @@ def modifyDevice(session,device,pan_id=None,source_id=None,extended_source_id=No
     session.commit()
 
 def main():
-    """Main entry point of program"""
-    # Connect to the database using SQLAlchemy
     
     session = createDBSession()
     test_device_1 = createDevice(session=session,pan_id="test1",source_id="short_test_1",extended_source_id="long_test_1")
