@@ -48,6 +48,8 @@ class Alerts(Base):
     read = Column(Boolean,default=False)
     def __str__(self):
         return f"Alert ID: {self.alerts_id}, Message: {self.message}, Read: {self.read}"
+    def __resp__(self):
+        return f"Alert ID: {self.alerts_id}, Message: {self.message}, Read: {self.read}"
 
 def createDBSession():
     sqlite_filepath = "test.db"
@@ -66,7 +68,7 @@ def createPacket(session,packet_time,pan_id,source_id,destination_id,extended_so
 
 def queryPacket(session):
     packet = session.query(Packets).filter_by(parsed=False).order_by(Packets.packet_id.asc()).first()
-    return map_entry
+    return packet
 
 def parsedPacket(session,packet):
     packet.parsed = True
@@ -157,6 +159,24 @@ def main():
     print(device1)
     modifyDevice(session=session,device=device1,pan_id="33")
     print(device1)
+
+    packet = createPacket(session,datetime.datetime.now(),"test","test1","test2")
+    test=queryPacket(session)
+    print(test)
+    parsedPacket(session,test)
+    print(queryPacket(session))
+
+    alert1 = createAlert(session,"Test Massage One")
+    createAlert(session,"Test Massage Two")
+    alerts=queryAlerts(session)
+    for alert in alerts:
+        print(alert)
+    readAlert(session,alert1)
+    alerts=queryAlerts(session)
+    for alert in alerts:
+        print(alert)
+
+
 
 if __name__ == "__main__":
     main()
