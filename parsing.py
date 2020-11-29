@@ -46,11 +46,15 @@ def parse_device(session, packet):
             elif device_ext.pan_id != packet.pan_id:
                 alerts.append('Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
                 invalidate_all_map_entries(session, device_ext)
-                db.modifyDevice(session=session, device=device_ext, pan_id=packet.pan_id)
-            else:  # PanID and ext match, source dont so device somehow got readdressed
+                db.modifyDevice(session=session, device=device_ext, pan_id=packet.pan_id, source_id=packet.source_id)
+            else:  # PanID and ext match, source don't so device somehow got readdressed
                 alerts.append('Device %s has been readdressed from %s to %s' % (device_ext.extended_source_id,
                                                                                 device_ext.source_id, packet.source_id))
+                invalidate_all_map_entries(session, device_ext)
                 db.modifyDevice(session=session, device=device_ext, source_id=packet.source_id)
+        else:
+            alerts.append('New device %s added to network %s' % (packet.extended_source_id, packet.pan_id))
+            db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
 
     if packet.destination_id not in broadcast:
         dest_device = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.destination_id)
@@ -60,20 +64,26 @@ def parse_device(session, packet):
 
     if packet.network_source_id is not None:
         nwk_device = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id)
-        if nwk_device is not None and nwk_device[0].extended_source_id is None:
+        if nwk_device is not None and nwk_device.extended_source_id is None:
             db.modifyDevice(session=session, device=nwk_device[0], extended_source_id=packet.network_extended_source_id)
         elif nwk_device is None:
             alerts.append('New Device %s added to network %s' % (packet.network_source_id, packet.pan_id))
+            db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id,
+                            extended_source_id=packet.network_extended_source_id)
 
     return alerts
 
 
 def parse_conns(session, packet):
     alert = []
-    forward_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=packet.source_id,
-                                    destination_device=packet.destination_id)
-    back_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=packet.destination_id,
-                                 destination_device=packet.source_id)
+    device_source = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
+    device_destination = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.destination_id)
+
+    forward_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_source,
+                                    destination_device=device_destination)
+    back_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_destination,
+                                 destination_device=device_source)
+
     if forward_link is None and back_link is None:
         alert.append('New connection between %s and %s established in network %s' %
                      (packet.source_id, packet.destination_id, packet.pan_id))
