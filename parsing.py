@@ -1,5 +1,6 @@
 import db
 import time
+import threading
 
 
 def invalidate_all_map_entries(session, device):
@@ -97,10 +98,10 @@ def raise_alerts(session, alerts):
         db.createAlert(session=session, message=alert)
 
 
-def parse():
+def parse(e):
     session = db.createDBSession()
 
-    while True:
+    while True and not e.is_set():
         pkt = db.queryPacket(session)
 
         if pkt is None:
@@ -117,4 +118,5 @@ def parse():
 
 
 if __name__ == '__main__':
-    parse()
+    event = threading.Event()
+    parse(event)

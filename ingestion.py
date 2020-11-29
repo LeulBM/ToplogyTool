@@ -3,6 +3,7 @@ from scapy.layers.dot15d4 import *
 from scapy.layers.zigbee import *
 from datetime import datetime
 import db
+import threading
 
 
 session = db.createDBSession()
@@ -44,10 +45,11 @@ def parse_packet(newpkt):
             db.createPacket(session, rectime, panid, src, dest, ext_src, nwk_src, nwk_ext)
 
 
-def main():
+def start_sniff(e):
     conf.dot15d4_protocol = "zigbee"
-    sniff(iface="lo", prn=parse_packet)
+    sniff(iface="lo", prn=parse_packet, stop_filter=lambda x: e.is_set())
 
 
 if __name__ == '__main__':
-    main()
+    event = threading.Event()
+    start_sniff(event)
