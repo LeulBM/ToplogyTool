@@ -48,7 +48,8 @@ def parse_device(session, packet):
                                   (packet.extended_source_id, device.extended_source_id, device.pan_id))
                     invalidate_all_map_entries(session, device)
                     db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
-        # If entry is found and packet has no ext src, nothing else we can do here
+            else:
+                db.decreaseConfidence(session, device)
 
     else:  # Device couldn't be found by panid and src
         if packet.extended_source_id is not None:
@@ -84,12 +85,11 @@ def parse_device(session, packet):
     if packet.network_source_id is not None:
         nwk_device = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id)
         if nwk_device is not None and nwk_device.extended_source_id is None:
-            db.modifyDevice(session=session, device=nwk_device[0], extended_source_id=packet.network_extended_source_id)
+            db.modifyDevice(session=session, device=nwk_device, extended_source_id=packet.network_extended_source_id)
         elif nwk_device is None:
-            if not check_confidence(session, nwk_device):
-                alerts.append('8 New Device %s added to network %s' % (packet.network_source_id, packet.pan_id))
-                db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id,
-                                extended_source_id=packet.network_extended_source_id)
+            alerts.append('8 New Device %s added to network %s' % (packet.network_source_id, packet.pan_id))
+            db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id,
+                            extended_source_id=packet.network_extended_source_id)
 
     return alerts
 
