@@ -26,7 +26,7 @@ def parse_device(session, packet):
                 else:  # This ext src exists elsewhere, remove old entry and add this ext src to found entry
                     alerts.append('Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
                     remove_all_map_entries(session, ext_check)
-                    # TODO DELETE EXT CHECK ENTRY
+                    db.deleteDevice(session, ext_check)
                     db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
 
             elif device.extended_source_id != packet.extended_source_id:  # Packet has ext src, does not match device
