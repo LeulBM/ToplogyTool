@@ -151,7 +151,7 @@ def increaseConfidence(session,db_object):
         session.commit()
 
 def decreaseConfidence(session,db_object):
-    if isinstance(db_object, (Devices, MapEntries)):
+    if isinstance(db_object, (Devices, MapEntries)) and db_object.confidence > 0:
         db_object.confidence -= 1
         session.commit()
 
