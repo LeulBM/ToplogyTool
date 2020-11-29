@@ -2,7 +2,7 @@ import db
 import time
 
 
-def remove_all_map_entries(session, device):
+def invalidate_all_map_entries(session, device):
     for entry in device.source_map_entries:
         db.invalidateMapEntry(session, entry)
     for entry in device.destination_map_entries:
@@ -25,14 +25,14 @@ def parse_device(session, packet):
 
                 else:  # This ext src exists elsewhere, remove old entry and add this ext src to found entry
                     alerts.append('Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
-                    remove_all_map_entries(session, ext_check)
+                    # invalidate_all_map_entries(session, ext_check)
                     db.deleteDevice(session, ext_check)
                     db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
 
             elif device.extended_source_id != packet.extended_source_id:  # Packet has ext src, does not match device
                 alerts.append('New Device %s has replaced %s in network %s' %
                               (packet.extended_source_id, device.extended_source_id, device.pan_id))
-                remove_all_map_entries(session, device)
+                invalidate_all_map_entries(session, device)
                 db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
         # If entry is found and packet has no ext src, nothing else we can do here
 
@@ -45,7 +45,7 @@ def parse_device(session, packet):
                                 extended_source_id=packet.extended_source)
             elif device_ext.pan_id != packet.pan_id:
                 alerts.append('Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
-                remove_all_map_entries(session, device_ext)
+                invalidate_all_map_entries(session, device_ext)
                 db.modifyDevice(session=session, device=device_ext, pan_id=packet.pan_id)
             else:  # PanID and ext match, source dont so device somehow got readdressed
                 alerts.append('Device %s has been readdressed from %s to %s' % (device_ext.extended_source_id,
