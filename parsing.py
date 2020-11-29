@@ -88,7 +88,7 @@ def parse_conns(session, packet):
 
         if forward_link is None and back_link is None:
             alerts.append('9 New connection between %s and %s established in network %s' %
-                         (packet.source_id, packet.destination_id, packet.pan_id))
+                          (packet.source_id, packet.destination_id, packet.pan_id))
             db.createMapEntry(session=session, pan_id=packet.pan_id, source_device=device_source,
                               destination_device=device_destination)
     return alerts
