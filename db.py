@@ -36,8 +36,8 @@ class Devices(Base):
     pan_id = Column(String)
     source_id = Column(String)
     extended_source_id = Column(String, unique=True)
-    source_map_entries = relationship("MapEntries",order_by="MapEntries.entry_id", foreign_keys=[MapEntries.source_device_id])
-    destination_map_entries = relationship("MapEntries",order_by="MapEntries.entry_id", foreign_keys=[MapEntries.destination_device_id])
+    source_map_entries = relationship("MapEntries",order_by="MapEntries.entry_id", foreign_keys=[MapEntries.source_device_id],  cascade="all, delete")
+    destination_map_entries = relationship("MapEntries",order_by="MapEntries.entry_id", foreign_keys=[MapEntries.destination_device_id], cascade="all, delete")
     def __str__(self):
         return f"Device ID: {self.device_id}, PAN ID: {self.pan_id}, Source ID: {self.source_id},Extended Source ID: {self.extended_source_id}"
 
@@ -139,6 +139,10 @@ def modifyDevice(session,device,pan_id=None,source_id=None,extended_source_id=No
         device.source_id = source_id
     session.commit()
 
+def deleteDevice(session,device):
+    session.delete(device)
+    session.commit()
+
 def main():
     
     session = createDBSession()
@@ -147,6 +151,8 @@ def main():
     map_entry = createMapEntry(session=session,pan_id="test1",source_device=test_device_1,destination_device=test_device_2)
     print(test_device_1)
     print(test_device_2)
+    
+    deleteDevice(session,test_device_1)
 
     device1=queryDevice(session=session,extended_source_id='long_test_1')
     device2=queryDevice(session=session,extended_source_id='long_test_2')
