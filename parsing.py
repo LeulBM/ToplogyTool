@@ -3,6 +3,7 @@ import time
 import threading
 
 BROADCAST = ['0xffff', '0xfffe', '0xfffd', '0xfffc', '0xfffb', '0xfffa', '0xfff9', '0xfff8']
+CONFIDENCE = 3
 
 
 def invalidate_all_map_entries(session, device):
@@ -10,6 +11,15 @@ def invalidate_all_map_entries(session, device):
         db.invalidateMapEntry(session, entry)
     for entry in device.destination_map_entries:
         db.invalidateMapEntry(session, entry)
+
+
+#  If return True, confidence value was high enough, if False, make change
+def check_confidence(session, device):
+    if device.confidence < CONFIDENCE:
+        db.increaseConfidence(session=session, db_object=device)
+        return True
+    else:
+        return False
 
 
 def parse_device(session, packet):
@@ -26,34 +36,41 @@ def parse_device(session, packet):
                     db.modifyDevice(session, device, extended_source_id=packet.extended_source_id)
 
                 else:  # This ext src exists elsewhere, remove old entry and add this ext src to found entry
-                    alerts.append('1 Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
-                    # invalidate_all_map_entries(session, ext_check)
-                    db.deleteDevice(session, ext_check)
-                    db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
+                    if not check_confidence(session, ext_check):
+                        alerts.append('1 Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
+                        # invalidate_all_map_entries(session, ext_check)
+                        db.deleteDevice(session, ext_check)
+                        db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
 
             elif device.extended_source_id != packet.extended_source_id:  # Packet has ext src, does not match device
-                alerts.append('2 New Device %s has replaced %s in network %s' %
-                              (packet.extended_source_id, device.extended_source_id, device.pan_id))
-                invalidate_all_map_entries(session, device)
-                db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
+                if not check_confidence(session, device):
+                    alerts.append('2 New Device %s has replaced %s in network %s' %
+                                  (packet.extended_source_id, device.extended_source_id, device.pan_id))
+                    invalidate_all_map_entries(session, device)
+                    db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
         # If entry is found and packet has no ext src, nothing else we can do here
 
     else:  # Device couldn't be found by panid and src
         if packet.extended_source_id is not None:
             device_ext = db.queryDevice(session=session, extended_source_id=packet.extended_source_id)
+
             if device_ext is None:
                 alerts.append('3 New device %s added to network %s' % (packet.extended_source_id, packet.pan_id))
                 db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id,
                                 extended_source_id=packet.extended_source_id)
+
             elif device_ext.pan_id != packet.pan_id:
-                alerts.append('4 Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
-                invalidate_all_map_entries(session, device_ext)
-                db.modifyDevice(session=session, device=device_ext, pan_id=packet.pan_id, source_id=packet.source_id)
+                if not check_confidence(session, device_ext):
+                    alerts.append('4 Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
+                    invalidate_all_map_entries(session, device_ext)
+                    db.modifyDevice(session=session, device=device_ext, pan_id=packet.pan_id, source_id=packet.source_id)
+
             else:  # PanID and ext match, source don't so device somehow got readdressed
-                alerts.append('5 Device %s has been readdressed from %s to %s' % (device_ext.extended_source_id,
-                                                                                device_ext.source_id, packet.source_id))
-                invalidate_all_map_entries(session, device_ext)
-                db.modifyDevice(session=session, device=device_ext, source_id=packet.source_id)
+                if not check_confidence(session, device_ext):
+                    alerts.append('5 Device %s has been readdressed from %s to %s' % (device_ext.extended_source_id,
+                                                                                    device_ext.source_id, packet.source_id))
+                    invalidate_all_map_entries(session, device_ext)
+                    db.modifyDevice(session=session, device=device_ext, source_id=packet.source_id)
         else:
             alerts.append('6 New device %s added to network %s' % (packet.source_id, packet.pan_id))
             db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
@@ -69,9 +86,10 @@ def parse_device(session, packet):
         if nwk_device is not None and nwk_device.extended_source_id is None:
             db.modifyDevice(session=session, device=nwk_device[0], extended_source_id=packet.network_extended_source_id)
         elif nwk_device is None:
-            alerts.append('8 New Device %s added to network %s' % (packet.network_source_id, packet.pan_id))
-            db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id,
-                            extended_source_id=packet.network_extended_source_id)
+            if not check_confidence(session, nwk_device):
+                alerts.append('8 New Device %s added to network %s' % (packet.network_source_id, packet.pan_id))
+                db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id,
+                                extended_source_id=packet.network_extended_source_id)
 
     return alerts
 
