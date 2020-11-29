@@ -118,8 +118,8 @@ def createDevice(session,pan_id,source_id,extended_source_id=None):
     return device
 
 def queryDevice(session,pan_id=None,source_id=None,extended_source_id=None):
-    if extended_source_id is None and pan_id is not None and extended_source_id is not None:
-        devices = session.query(Devices).filter_by(pan_id=pan_id,source_id=source_id).first()
+    if extended_source_id is None and pan_id is not None and source_id is not None:
+        device = session.query(Devices).filter_by(pan_id=pan_id,source_id=source_id).first()
     else:
         device = session.query(Devices).filter_by(extended_source_id=extended_source_id).first()
     return device

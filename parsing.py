@@ -2,6 +2,7 @@ import db
 import time
 import threading
 
+BROADCAST = ['0xffff', '0xfffe', '0xfffd', '0xfffc', '0xfffb', '0xfffa', '0xfff9', '0xfff8']
 
 def invalidate_all_map_entries(session, device):
     for entry in device.source_map_entries:
@@ -11,7 +12,6 @@ def invalidate_all_map_entries(session, device):
 
 
 def parse_device(session, packet):
-    broadcast = ['0xffff', '0xfffe', '0xfffd', '0xfffc', '0xfffb', '0xfffa', '0xfff9', '0xfff8']
     alerts = []
     device = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
 
@@ -43,7 +43,7 @@ def parse_device(session, packet):
             if device_ext is None:
                 alerts.append('New device %s added to network %s' % (packet.extended_source_id, packet.pan_id))
                 db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id,
-                                extended_source_id=packet.extended_source)
+                                extended_source_id=packet.extended_source_id)
             elif device_ext.pan_id != packet.pan_id:
                 alerts.append('Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
                 invalidate_all_map_entries(session, device_ext)
@@ -54,10 +54,10 @@ def parse_device(session, packet):
                 invalidate_all_map_entries(session, device_ext)
                 db.modifyDevice(session=session, device=device_ext, source_id=packet.source_id)
         else:
-            alerts.append('New device %s added to network %s' % (packet.extended_source_id, packet.pan_id))
+            alerts.append('New device %s added to network %s' % (packet.source_id, packet.pan_id))
             db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
 
-    if packet.destination_id not in broadcast:
+    if packet.destination_id not in BROADCAST:
         dest_device = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.destination_id)
         if dest_device is None:
             alerts.append('New device %s added to network %s' % (packet.destination_id, packet.pan_id))
@@ -77,19 +77,19 @@ def parse_device(session, packet):
 
 def parse_conns(session, packet):
     alert = []
-    device_source = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
-    device_destination = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.destination_id)
+    if packet.destination_id not in BROADCAST:
+        device_source = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
+        device_destination = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.destination_id)
+        forward_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_source,
+                                        destination_device=device_destination)
+        back_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_destination,
+                                    destination_device=device_source)
 
-    forward_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_source,
-                                    destination_device=device_destination)
-    back_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_destination,
-                                 destination_device=device_source)
-
-    if forward_link is None and back_link is None:
-        alert.append('New connection between %s and %s established in network %s' %
-                     (packet.source_id, packet.destination_id, packet.pan_id))
-        db.createMapEntry(session=session, pan_id=packet.pan_id, source_device=packet.source_id,
-                          destination_device=packet.destination_id)
+        if forward_link is None and back_link is None:
+            alert.append('New connection between %s and %s established in network %s' %
+                        (packet.source_id, packet.destination_id, packet.pan_id))
+            db.createMapEntry(session=session, pan_id=packet.pan_id, source_device=device_source,
+                            destination_device=device_destination)
     return alert
 
 
