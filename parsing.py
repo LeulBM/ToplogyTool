@@ -7,7 +7,7 @@ def remove_all_map_entries(session, device):
     for entry in device.destination_map_entries:
         db.invalidateMapEntry(session, entry)
 
-def parse_device(packet, session):
+def parse_device(session, packet):
     broadcast = ['0xffff', '0xfffe', '0xfffd', '0xfffc', '0xfffb', '0xfffa', '0xfff9', '0xfff8']
     alerts = []
     ###
@@ -67,24 +67,22 @@ def parse_device(packet, session):
 
     return alerts
 
-def parse_conns(source, destination, panID):
+def parse_conns(session, packet):
     alert = []
-    #if conSrc = source and connDest = destination and panId = panID
-    #       or
-    #   connSrc = destination and connDest= dource and panId = panID:
-    #       already exists
-    #else
-    #   add source, dest, panID
-    #   ALERT
-    #
-    #return alert
-    #
+    forward_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=packet.source_id,
+                                    destination_device=packet.destination_id)
+    back_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=packet.destination_id,
+                                    destination_device=packet.source_id)
+    if forward_link is None and back_link is None:
+        alert.append('New connection between %s and %s established in network %s' %
+                     (packet.source_id, packet.destination_id, packet.pan_id))
+        db.createMapEntry(session=session, panid=packet.pan_id, source_device=packet.source_id,
+                          destination_device=packet.destination_id)
+    return alert
 
-def raise_alerts(device, connection):
-    #for x in device
-    #   store x in alerts
-    #for x in connections
-    #    store x in alerts
+def raise_alerts(session, alerts):
+    for alert in alerts:
+        db.createAlert(session=session, message=alert)
 
 def parse():
     session = db.createDBSession()
@@ -96,15 +94,13 @@ def parse():
             time.sleep(1)
 
         else:
-            device_alerts = parse_device(pkt, session)
+            alerts = parse_device(session, pkt)
+            map_alerts = parse_conns(session, pkt)
 
+            alerts.extend(map_alerts)
+            raise_alerts(session, alerts)
 
             db.parsedPacket(session, pkt)
-
-        # device_alerts = parse_device
-        # connection_alerts = parse_conns
-        # raise alerts
-
 
 
 
