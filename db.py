@@ -27,6 +27,7 @@ class MapEntries(Base):
     destination_device_id = Column(Integer, ForeignKey("devices.device_id"))
     created = Column(DateTime,default=datetime.datetime.utcnow)
     valid = Column(Boolean,default=True)
+    confidence = Column(Integer, default=0)
     def __str__(self):
         return f"Entry ID: {self.entry_id}, PAN ID: {self.pan_id}, Source Device ID: {self.source_device_id}, Destination Device ID: {self.destination_device_id}, Created: {self.created}, Valid: {self.valid}"
 
@@ -36,6 +37,7 @@ class Devices(Base):
     pan_id = Column(String)
     source_id = Column(String)
     extended_source_id = Column(String, unique=True)
+    confidence = Column(Integer, default=0)
     source_map_entries = relationship("MapEntries",order_by="MapEntries.entry_id", foreign_keys=[MapEntries.source_device_id],  cascade="all, delete")
     destination_map_entries = relationship("MapEntries",order_by="MapEntries.entry_id", foreign_keys=[MapEntries.destination_device_id], cascade="all, delete")
     def __str__(self):
@@ -142,6 +144,16 @@ def modifyDevice(session,device,pan_id=None,source_id=None,extended_source_id=No
 def deleteDevice(session,device):
     session.delete(device)
     session.commit()
+
+def increaseConfidence(session,db_object):
+    if isinstance(db_object, (Devices, MapEntries)):
+        db_object.confidence += 1
+        session.commit()
+
+def decreaseConfidence(session,db_object):
+    if isinstance(db_object, (Devices, MapEntries)):
+        db_object.confidence -= 1
+        session.commit()
 
 def main():
     
