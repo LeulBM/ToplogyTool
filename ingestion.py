@@ -17,6 +17,9 @@ def parse_packet(newpkt):
     if newpkt.haslayer(UDP) and newpkt[UDP].dport == 52001:
         pkt = Dot15d4FCS(newpkt.load)
 
+        computed_fcs = pkt.compute_fcs(pkt.original[:-2])
+        computed_fcs_value = struct.unpack('<H', computed_fcs)[0]
+
         if pkt.haslayer(Dot15d4Data):
             src = "{0:#06x}".format(pkt.src_addr)
             dest = "{0:#06x}".format(pkt.dest_addr)
@@ -40,6 +43,9 @@ def parse_packet(newpkt):
 
             nes_field = pkt[ZigbeeNWK].get_field('ext_src')
             nwk_ext = nes_field.i2repr(pkt, pkt[ZigbeeNWK].ext_src)
+            
+        if computed_fcs_value != pkt.fcs:
+            valid = False
 
         if valid:
             db.createPacket(session, rectime, panid, src, dest, ext_src, nwk_src, nwk_ext)
