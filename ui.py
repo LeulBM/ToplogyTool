@@ -10,13 +10,15 @@ def home():
     map_entires = db.queryMapEntries(session)
     devices = db.queryDevices(session)
     node_entries = []
+    legend_entries = []
     for device in devices:
-        node_entries.append({"name":device.source_id,"group":1})
-    
+        node_entries.append({"id":device.device_id,"name":device.source_id,"group":device.pan_id})
+        if device.pan_id not in legend_entries:
+            legend_entries.append(device.pan_id)
     links_entries = []
     for entry in map_entires:
-        links_entries.append({"source":entry.source_device_id-1,"target":entry.destination_device_id-1})
-    entires = {"nodes":node_entries,"links":links_entries}
+        links_entries.append({"source":entry.source_device_id,"target":entry.destination_device_id})
+    entires = {"nodes":node_entries,"links":links_entries,"legend":legend_entries}
     return render_template('index.html', alerts = alerts, entires=entires, devices=devices)
     
 

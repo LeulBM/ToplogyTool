@@ -61,6 +61,17 @@ function drawGraph(graph) {
     var plot = svg.append("g")
         .attr("id", "plot")
         .attr("transform", "translate(" + pad + ", " + pad + ")");
+
+    var edges = [];
+
+    graph.links.forEach(function(e) { 
+        // Get the source and target nodes
+        var sourceNode = graph.nodes.filter(function(n) { return n.id === e.source; })[0],
+            targetNode = graph.nodes.filter(function(n) { return n.id === e.target; })[0];
+    
+        // Add the edge to the array
+        edges.push({source: sourceNode, target: targetNode});
+    });    
     // https://github.com/mbostock/d3/wiki/Force-Layout#wiki-force
     var layout = d3.layout.force()
         .size([width - margin, height - margin])
@@ -69,9 +80,9 @@ function drawGraph(graph) {
             return (d.source.group == d.target.group) ? 50 : 100;
         })
         .nodes(graph.nodes)
-        .links(graph.links)
+        .links(edges)
         .start();
-    drawLinks(graph.links);
+    drawLinks(edges);
     drawNodes(graph.nodes);
     // add ability to drag and update layout
     // https://github.com/mbostock/d3/wiki/Force-Layout#wiki-drag
@@ -87,6 +98,29 @@ function drawGraph(graph) {
             .attr("cx", function(d) { return d.x; })
             .attr("cy", function(d) { return d.y; });
     });
+    var color = d3.scale.category20();
+    var size = 20
+    svg.selectAll("mydots")
+    .data(graph.legend)
+    .enter()
+    .append("rect")
+        .attr("x", 100)
+        .attr("y", function(d,i){ return 100 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr("width", size)
+        .attr("height", size)
+        .style("fill", function(d){ return color(d)})
+
+    // Add one dot in the legend for each name.
+    svg.selectAll("mylabels")
+    .data(graph.legend)
+    .enter()
+    .append("text")
+        .attr("x", 100 + size*1.2)
+        .attr("y", function(d,i){ return 100 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+        // .style("fill", function(d){ return color(d)})
+        .text(function(d){ return d})
+        .attr("text-anchor", "left")
+        .style("alignment-baseline", "middle")
 }
     function tick(e) {
     // Push different nodes in different directions for clustering.
