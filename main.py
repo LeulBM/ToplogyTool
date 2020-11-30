@@ -1,6 +1,7 @@
 from scapy.all import *
 from scapy.layers.dot15d4 import *
 from scapy.layers.zigbee import *
+import struct
 
 conf.dot15d4_protocol = "zigbee"
 
@@ -9,6 +10,14 @@ count = 1
 for pkt in filereader:
     valid = False
     src = ext_src = dest = panid = None
+
+    if pkt.haslayer(Dot15d4FCS):
+        fcs_layer = pkt[Dot15d4FCS]
+        fcs = "{0:#06x}".format(fcs_layer.fcs)
+        computed_fcs = fcs_layer.compute_fcs(pkt.original[:-2])
+        test_fcs = struct.unpack('<H', computed_fcs)
+        hex_test_fcs="{0:#06x}".format(test_fcs[0])
+        print(f"fcs:{fcs}, compfcs:{hex_test_fcs}")
 
     if pkt.haslayer(Dot15d4Data):
         src = "{0:#06x}".format(pkt.src_addr)
