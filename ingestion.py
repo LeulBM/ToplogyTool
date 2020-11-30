@@ -20,7 +20,7 @@ def parse_packet(newpkt):
         computed_fcs = pkt.compute_fcs(pkt.original[:-2])
         computed_fcs_value = struct.unpack('<H', computed_fcs)[0]
 
-        if pkt.haslayer(Dot15d4Data):
+        if pkt.haslayer(Dot15d4Data) and hasattr(pkt, 'src_addr'):
             src = "{0:#06x}".format(pkt.src_addr)
             dest = "{0:#06x}".format(pkt.dest_addr)
             panid = "{0:#06x}".format(pkt.dest_panid)
@@ -46,6 +46,11 @@ def parse_packet(newpkt):
             
         if computed_fcs_value != pkt.fcs:
             valid = False
+
+        if src is not None and len(src) > 6:
+            valid = False  # Traffic here is when a device has no short, and uses extended in its place before it gets
+                            # a short asisgned, good indicator that pan id conflict not underway, too much investment
+                            # for now but good for capstone
 
         if valid:
             db.createPacket(session, rectime, panid, src, dest, ext_src, nwk_src, nwk_ext)
