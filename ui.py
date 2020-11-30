@@ -3,6 +3,7 @@ from flask import Flask, render_template, make_response, redirect, url_for, requ
 
 app = Flask(__name__)
 session = db.createDBSession()
+AUTO_REFRESH=False
 
 @app.route('/')
 def home():
@@ -19,7 +20,7 @@ def home():
     for entry in map_entires:
         links_entries.append({"source":entry.source_device_id,"target":entry.destination_device_id})
     entires = {"nodes":node_entries,"links":links_entries,"legend":legend_entries}
-    return render_template('index.html', alerts = alerts, entires=entires, devices=devices)
+    return render_template('index.html', alerts = alerts, entires=entires, devices=devices,auto_refresh_bool=AUTO_REFRESH)
     
 
 @app.route('/clear_alerts',methods = ['POST'])
@@ -27,6 +28,15 @@ def clear_alerts():
     alert_id = request.form['alert_id']
     alert = db.queryAlert(session,alert_id)
     db.readAlert(session,alert)
+    return redirect(url_for('home'))
+
+@app.route('/auto_refresh')
+def auto_refresh():
+    global AUTO_REFRESH
+    if AUTO_REFRESH:
+        AUTO_REFRESH=False
+    else:
+        AUTO_REFRESH=True
     return redirect(url_for('home'))
 
 @app.route('/<page_name>')
