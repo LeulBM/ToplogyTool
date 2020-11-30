@@ -143,4 +143,5 @@ cython_debug/
 ieee802154_transceiver.py
 
 .vscode/
-test.db
+*.db
+*.db-journal
