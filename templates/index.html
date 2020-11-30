@@ -15,7 +15,9 @@
 {% endfor %}
 <div align="center" id="force"></div>
 <br/>
-<table class="table table-bordered table-striped">
+<div class="bs-component">
+    <div class="table-responsive">
+<table class="table table-bordered table-striped" id="dataTable">
     <thead>
       <tr>
         <th scope="col">PAN ID</th>
@@ -33,6 +35,8 @@
         {% endfor %}    
     </tbody>
   </table>
+</div>
+</div>
 
 
 
@@ -57,4 +61,12 @@
     // d3.json(entires, drawGraph);
     drawGraph(entires);
     </script>
+    <script>
+        $(document).ready(function() {
+              $('#dataTable').DataTable({
+                "lengthMenu": [[-1, 10, 25, 50], ["All", 10, 25, 50]]
+              });
+        });
+    </script>
+    
 {% endblock %}
