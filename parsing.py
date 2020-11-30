@@ -37,39 +37,42 @@ def parse_device(session, packet):
 
                 else:  # This ext src exists elsewhere, remove old entry and add this ext src to found entry
                     if not check_confidence(session, ext_check):
-                        alerts.append('Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
+                        alerts.append('Device %s(%s) moved to network %s from network %s' %
+                                      (packet.source_id, packet.extended_source_id, packet.pan_id, ext_check.pan_id))
                         # invalidate_all_map_entries(session, ext_check)
                         db.deleteDevice(session, ext_check)
                         db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
 
             elif device.extended_source_id != packet.extended_source_id:  # Packet has ext src, does not match device
                 if not check_confidence(session, device):
-                    alerts.append('New Device %s has replaced %s in network %s' %
+                    alerts.append('New Device %s has replaced old device %s in network %s' %
                                   (packet.extended_source_id, device.extended_source_id, device.pan_id))
                     invalidate_all_map_entries(session, device)
                     db.modifyDevice(session=session, device=device, extended_source_id=packet.extended_source_id)
             else:
                 db.decreaseConfidence(session, device)
+        # No else here to increase confidence as we don't have an extended source to compare against
 
-    else:  # Device couldn't be found by panid and src
+    else:  # Device couldn't be found by pan_id and src
         if packet.extended_source_id is not None:
             device_ext = db.queryDevice(session=session, extended_source_id=packet.extended_source_id)
 
-            if device_ext is None:
+            if device_ext is None:  # Source+Pan_ID combo nor extended source could be found, brand new device
                 alerts.append('New device %s added to network %s' % (packet.extended_source_id, packet.pan_id))
                 db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id,
                                 extended_source_id=packet.extended_source_id)
 
-            elif device_ext.pan_id != packet.pan_id:
+            elif device_ext.pan_id != packet.pan_id:  # Ext Source found in new PAN
                 if not check_confidence(session, device_ext):
-                    alerts.append('Device %s moved to network %s' % (packet.extended_source_id, packet.pan_id))
+                    alerts.append('Device %s(%s) moved to network %s from network %s' %
+                                  (packet.source_id, packet.extended_source_id, packet.pan_id, device_ext.pan_id))
                     invalidate_all_map_entries(session, device_ext)
                     db.modifyDevice(session=session, device=device_ext, pan_id=packet.pan_id, source_id=packet.source_id)
 
             else:  # PanID and ext match, source don't so device somehow got readdressed
                 if not check_confidence(session, device_ext):
-                    alerts.append('Device %s has been readdressed from %s to %s' % (device_ext.extended_source_id,
-                                                                                    device_ext.source_id, packet.source_id))
+                    alerts.append('Device %s(%s) has been readdressed from previous short address %s' %
+                                  (packet.source_id, device_ext.extended_source_id, device_ext.source_id))
                     invalidate_all_map_entries(session, device_ext)
                     db.modifyDevice(session=session, device=device_ext, source_id=packet.source_id)
         else:
@@ -87,7 +90,7 @@ def parse_device(session, packet):
         if nwk_device is not None and nwk_device.extended_source_id is None:
             db.modifyDevice(session=session, device=nwk_device, extended_source_id=packet.network_extended_source_id)
         elif nwk_device is None:
-            alerts.append('New Device %s added to network %s' % (packet.network_source_id, packet.pan_id))
+            alerts.append('New device %s added to network %s' % (packet.network_source_id, packet.pan_id))
             db.createDevice(session=session, pan_id=packet.pan_id, source_id=packet.network_source_id,
                             extended_source_id=packet.network_extended_source_id)
 
