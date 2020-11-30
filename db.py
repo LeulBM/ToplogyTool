@@ -89,6 +89,10 @@ def queryMapEntry(session,pan_id,source_device,destination_device):
     map_entry = session.query(MapEntries).filter_by(pan_id=pan_id,source_device_id=source_device.device_id,destination_device_id=destination_device.device_id).first()
     return map_entry
 
+def queryMapEntries(session):
+    map_entries = session.query(MapEntries).filter_by(valid=True).all()
+    return map_entries
+
 def invalidateMapEntry(session,entry):
     entry.valid = False
     session.commit()
@@ -102,6 +106,10 @@ def createAlert(session,message):
 def queryAlerts(session):
     alerts = session.query(Alerts).filter_by(read=False).all()
     return alerts
+
+def queryAlert(session,alert_id):
+    alert = session.query(Alerts).filter_by(alerts_id=alert_id).first()
+    return alert
 
 def readAlert(session,alert):
     alert.read = True
@@ -125,6 +133,10 @@ def queryDevice(session,pan_id=None,source_id=None,extended_source_id=None):
     else:
         device = session.query(Devices).filter_by(extended_source_id=extended_source_id).first()
     return device
+
+def queryDevices(session):
+    devices = session.query(Devices).all()
+    return devices
 
 def queryPANDevices(session,pan_id):
     devices = session.query(Devices).filter_by(pan_id=pan_id).all()

@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+
+{% block title %} Home {% endblock %}
+
+{% block body %}
+
+{%- for alert in alerts %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="{{ alert.alerts_id }}">
+        {{ alert.message }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+{% endfor %}
+<div align="center" id="force"></div>
+<br/>
+<table class="table table-bordered table-striped">
+    <thead>
+      <tr>
+        <th scope="col">PAN ID</th>
+        <th scope="col">Source ID</th>
+        <th scope="col">Extended Source ID</th>
+      </tr>
+    </thead>
+    <tbody>
+        {%- for device in devices %}
+        <tr>
+            <td>{{ device.pan_id }}</td>
+            <td>{{ device.source_id }}</td>
+            <td>{{ device.extended_source_id }}</td>
+        </tr>
+        {% endfor %}    
+    </tbody>
+  </table>
+
+
+
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(".alert").on('closed.bs.alert', function (data) {
+        $.post("clear_alerts", {alert_id: data.target.id},function(data, status) {// success callback
+                console.log(status)
+        })
+    })
+
+</script>
+    <script src="static/custom.js"></script>
+
+    <script>
+    const entires = JSON.parse('{{ entires|tojson }}');
+    console.log('entires', entires)
+    // d3.json(entires, drawGraph);
+    drawGraph(entires);
+    </script>
+{% endblock %}
