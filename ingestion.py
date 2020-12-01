@@ -48,7 +48,7 @@ def parse_packet(newpkt):
             valid = False
 
         if src is not None and len(src) > 6:
-            valid = False  # Traffic here is when a device has no short, and uses extended in its place before it gets
+            valid = False   # Traffic here is when a device has no short, and uses extended in its place before it gets
                             # a short asisgned, good indicator that pan id conflict not underway, too much investment
                             # for now but good for capstone
 

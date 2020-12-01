@@ -24,6 +24,11 @@ def check_confidence(session, device):
 
 def parse_device(session, packet):
     alerts = []
+
+    pan_exist = db.queryPANDevices(session, packet.pan_id)
+    if not pan_exist:
+        alerts.append("New network created. PAN ID: %s" % packet.pan_id)
+
     device = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.source_id)
 
     if device is not None:  # Device with said pan id and source exists
