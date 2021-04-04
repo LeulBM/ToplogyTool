@@ -2,14 +2,18 @@ import db
 from flask import Flask, render_template, make_response, redirect, url_for, request
 
 app = Flask(__name__)
-session = db.createDBSession()
+#session = db.createDBSession()
 AUTO_REFRESH=False
 
 @app.route('/')
 def home():
+    session = db.createDBSession()
+
     alerts = db.queryAlerts(session)
     map_entires = db.queryMapEntries(session)
     devices = db.queryDevices(session)
+    session.close()
+    
     node_entries = []
     legend_entries = []
     for device in devices:
@@ -25,9 +29,14 @@ def home():
 
 @app.route('/clear_alerts',methods = ['POST'])
 def clear_alerts():
+
+    session = db.createDBSession()
+
     alert_id = request.form['alert_id']
     alert = db.queryAlert(session,alert_id)
     db.readAlert(session,alert)
+
+    session.close()
     return redirect(url_for('home'))
 
 @app.route('/auto_refresh')

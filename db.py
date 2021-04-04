@@ -18,7 +18,6 @@ class Packets(Base):
     parsed = Column(Boolean,default=False)
     def __str__(self):
         return f"Packet ID: {self.packet_id}, Packet Time: {self.packet_time}, PAN ID: {self.pan_id}, Source ID: {self.source_id}, Destination ID: {self.destination_id}, Extended Source ID: {self.extended_source_id}, Network Source ID: {self.network_source_id},Network Extended Source ID {self.network_extended_source_id}, Parsed: {self.parsed}"
-
 class MapEntries(Base):
     __tablename__ = "map_entries"
     entry_id = Column(Integer, primary_key=True)

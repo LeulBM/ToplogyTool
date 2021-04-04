@@ -10,6 +10,7 @@ session = db.createDBSession()
 
 
 def parse_packet(newpkt):
+
     rectime = datetime.now()
 
     valid = False
@@ -53,7 +54,9 @@ def parse_packet(newpkt):
                             # for now but good for capstone
 
         if valid:
+            #session = db.createDBSession()
             db.createPacket(session, rectime, panid, src, dest, ext_src, nwk_src, nwk_ext)
+            #session.close()
 
 
 def start_sniff(e):
