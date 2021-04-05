@@ -76,8 +76,8 @@ def createDBSession():
     return session
 
 
-def createPacket(session, packet_time, pan_id, source_id, destination_id, extended_source_id=None,
-                 network_source_id=None, network_extended_source_id=None, pkt_raw):
+def createPacket(session, packet_time, pan_id, source_id, destination_id, pkt_raw, extended_source_id=None,
+                 network_source_id=None, network_extended_source_id=None):
     packet = Packets(packet_time=packet_time, pan_id=pan_id, source_id=source_id, destination_id=destination_id,
                      extended_source_id=extended_source_id, network_source_id=network_source_id,
                      network_extended_source_id=network_extended_source_id, packet_raw=pkt_raw)
