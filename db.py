@@ -16,6 +16,7 @@ class Packets(Base):
     extended_source_id = Column(String)
     network_source_id = Column(String)
     network_extended_source_id = Column(String)
+    packet_raw = Column(String)
     parsed = Column(Boolean, default=False)
 
     def __str__(self):
@@ -76,10 +77,10 @@ def createDBSession():
 
 
 def createPacket(session, packet_time, pan_id, source_id, destination_id, extended_source_id=None,
-                 network_source_id=None, network_extended_source_id=None):
+                 network_source_id=None, network_extended_source_id=None, pkt_raw):
     packet = Packets(packet_time=packet_time, pan_id=pan_id, source_id=source_id, destination_id=destination_id,
                      extended_source_id=extended_source_id, network_source_id=network_source_id,
-                     network_extended_source_id=network_extended_source_id)
+                     network_extended_source_id=network_extended_source_id, packet_raw=pkt_raw)
     session.add(packet)
     session.commit()
     return packet
