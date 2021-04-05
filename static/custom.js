@@ -1,4 +1,4 @@
-var width  = 960;
+var width  = 500;
 var height = 500;
 var margin = 20;
 var pad = margin / 2;

@@ -5,7 +5,7 @@ import struct
 
 conf.dot15d4_protocol = "zigbee"
 
-filereader = PcapReader("./captures/FirstCapture.pcap")
+filereader = PcapReader("./captures/secbee.pcap")
 count = 1
 for pkt in filereader:
     valid = False
