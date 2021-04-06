@@ -58,7 +58,7 @@ def parse_packet(newpkt):
             if computed_fcs_value != pkt.fcs:
                 valid = False
 
-            if src is not None and len(src) > 6:
+            if src is not None and len(src) > 6 and not pkt.haslayer(ZigbeeZLLCommissioningCluster):
                 valid = False   # Traffic here is when a device has no short, and uses extended in its place before it gets
                                 # a short asisgned, good indicator that pan id conflict not underway, too much investment
                                 # for now but good for capstone

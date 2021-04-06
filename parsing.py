@@ -1,9 +1,12 @@
 import db
 import time
 import threading
+from scapy.all import *
+
 
 BROADCAST = ['0xffff', '0xfffe', '0xfffd', '0xfffc', '0xfffb', '0xfffa', '0xfff9', '0xfff8']
 CONFIDENCE = 3
+LAST_TRANSACTION = ''
 
 
 def invalidate_all_map_entries(session, device):
@@ -126,9 +129,95 @@ def raise_alerts(session, alerts):
     for alert in alerts:
         db.createAlert(session=session, message=alert)
 
+def get_valid_zll():
+    valid = []
+    try:
+        with open("./auth_ZLL.txt") as f:
+            valid = f.read().splitlines()
+
+    except FileNotFoundError:
+        print("No authorized ZLL List Found")
+
+    finally:
+        return valid
+
+def get_scan_id(pkt):
+    return pkt[ZLLScanRequest].get_field('inter_pan_transaction_id')\
+            .i2repr(pkt, pkt.inter_pan_transaction_id)
+
+def parse_zll(session, pkt, spkt, auth_zll):
+    global LAST_TRANSACTION
+
+    alerts =[]
+    source = pkt.source_id;
+
+    target_device = db.queryDevice(session, extended_source_id=pkt.destination_id)
+
+    if source not in auth_zll:  # Unauthorized source, ID attack
+        if spkt.haslayer(ZLLScanRequest):  # SCAN 
+            t_id = get_scan_id(spkt)
+
+            if t_id != LAST_TRANSACTION:
+                LAST_TRANSACTION = t_id
+                alerts.append('TOUCHLINK: Scan Attempted by unauthorized user %s' %
+                        (pkt.source_id))
+
+        elif spkt.haslayer(ZLLScanResponse):    #SCAN RESPONSE
+            target_device = db.queryDevice(session, extended_source_id=pkt.source_id)
+
+            victim_pan = spkt[Dot15d4Data].get_field('src_panid').i2repr(spkt, spkt.src_panid)
+
+            if target_device is not None:
+                if not target_device.pan_id == victim_pan:  # Device is on new PAN, possibly Reset
+                    invalidate_all_map_entries(session, target_device)
+                    db.modifyDevice(session=session, device=target_device, pan_id=victim_pan)
+                    alerts.append('TOUCHLINK: Scan Response shows device %s moved to PAN %s, possible Reset' % (pkt.source_id, victim_pan))
+
+
+        elif spkt.haslayer(ZLLResetToFactoryNewRequest):  #RESET
+            if target_device is not None:
+                alerts.append('TOUCHLINK: Attempt to Factory Reset device %s(%s)' %
+                        (target_device.source_id, pkt.destination_id))
+            else:
+                alerts.append('TOUCHLINK: Attempt to Factory Reset device %s' %
+                        (pkt.destination_id))
+
+        elif spkt.haslayer(ZLLIdentifyRequest): #IDENTIFY
+            if target_device is not None:
+                alerts.append('TOUCHLINK: Attempt to Identify Device %s(%s) for %i seconds' %
+                        (target_device.source_id, pkt.destination_id, spkt[ZLLIdentifyRequest].identify_duration))
+            else:
+                alerts.append('TOUCHLINK: Attempt to Identify Device device %s for %i seconds' %
+                        (pkt.destination_id, spkt[ZLLIdentifyRequest].identify_duration))
+
+        elif spkt.haslayer(ZLLNetworkUpdateRequest): #UPDATE
+            if target_device is not None:
+                alerts.append('TOUCHLINK: Attempt to Update Device %s(%s) to channel %i' %
+                        (target_device.source_id, pkt.destination_id, 
+                            spkt[ZLLNetworkUpdateRequest].channel))
+            else:
+                alerts.append('TOUCHLINK: Attempt to Update Device %s to channel %i' %
+                        (pkt.destination_id, spkt[ZLLNetworkUpdateRequest].channel))
+
+        elif spkt.haslayer(ZLLNetworkJoinRouterRequest): #JOIN
+            new_pan = spkt[ZLLNetworkJoinRouterRequest].get_field('pan_id').i2repr(spkt, 
+                    spkt[ZLLNetworkJoinRouterRequest].pan_id)
+
+            if target_device is not None:
+                alerts.append('TOUCHLINK: Attempt to Join device %s(%s) to Network %s on channel %i' %
+                        (target_device.source_id, pkt.destination_id, new_pan,
+                            spkt[ZLLNetworkJoinRouterRequest].channel))
+            else:
+                alerts.append('TOUCHLINK: Attempt to Join device %s to Network %s on channel %i' %
+                        (pkt.destination_id, new_pan, spkt[ZLLNetworkJoinRouterRequest].channel))
+    return alerts
+
 
 def parse(e):
     session = db.createDBSession()
+    auth_zll = get_valid_zll()
+    conf.dot15d4_protocol = "zigbee"
+
 
     while True and not e.is_set():
         pkt = db.queryPacket(session)
@@ -137,8 +226,18 @@ def parse(e):
             time.sleep(0.5)
 
         else:
-            alerts = parse_device(session, pkt)
-            map_alerts = parse_conns(session, pkt)
+            alerts = []
+            map_alerts = []
+
+            spkt = Dot15d4FCS(pkt.packet_raw)
+            if spkt.haslayer(ZigbeeZLLCommissioningCluster):
+                # Touchlink Attack Detection
+                alerts = parse_zll(session, pkt, spkt, auth_zll)
+
+            else:
+                # Regular Attack Detection
+                alerts = parse_device(session, pkt)
+                map_alerts = parse_conns(session, pkt)
 
             alerts.extend(map_alerts)
             raise_alerts(session, alerts)
