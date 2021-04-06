@@ -134,6 +134,7 @@ def get_valid_zll():
     try:
         with open("./auth_ZLL.txt") as f:
             valid = f.read().splitlines()
+            print("Authorized ZLL List loaded")
 
     except FileNotFoundError:
         print("No authorized ZLL List Found")
