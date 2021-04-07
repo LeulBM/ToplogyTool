@@ -113,9 +113,9 @@ def parse_conns(session, packet):
         device_destination = db.queryDevice(session=session, pan_id=packet.pan_id, source_id=packet.destination_id)
 
         forward_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_source,
-                                        destination_device=device_destination)
+                                        destination_device=device_destination, val = True)
         back_link = db.queryMapEntry(session=session, pan_id=packet.pan_id, source_device=device_destination,
-                                     destination_device=device_source)
+                                     destination_device=device_source, val = True)
 
         if forward_link is None and back_link is None:
             alerts.append('New connection between %s and %s established in network %s' %

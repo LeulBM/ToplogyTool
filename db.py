@@ -97,7 +97,7 @@ def parsedPacket(session, packet):
 
 
 def createMapEntry(session, pan_id, source_device, destination_device):
-    existing_device = queryMapEntry(session, pan_id, source_device, destination_device)
+    existing_device = queryMapEntry(session, pan_id, source_device, destination_device, val = True)
     if existing_device is not None:
         return existing_device
     map_entry = MapEntries(pan_id=pan_id, source_device_id=source_device.device_id,
@@ -107,9 +107,14 @@ def createMapEntry(session, pan_id, source_device, destination_device):
     return map_entry
 
 
-def queryMapEntry(session, pan_id, source_device, destination_device):
-    map_entry = session.query(MapEntries).filter_by(pan_id=pan_id, source_device_id=source_device.device_id,
-                                                    destination_device_id=destination_device.device_id).first()
+def queryMapEntry(session, pan_id, source_device, destination_device, val=None):
+    if val is None:
+        map_entry = session.query(MapEntries).filter_by(pan_id=pan_id, source_device_id=source_device.device_id,
+                destination_device_id=destination_device.device_id).first()
+    else:
+        map_entry = session.query(MapEntries).filter_by(pan_id=pan_id, source_device_id=source_device.device_id,
+                destination_device_id=destination_device.device_id, valid=val).first()
+ 
     return map_entry
 
 
