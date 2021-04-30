@@ -141,6 +141,8 @@ cython_debug/
 
 .idea
 ieee802154_transceiver.py
+auth_ZLL.txt
+*.swp
 
 .vscode/
 *.db

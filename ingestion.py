@@ -16,47 +16,60 @@ def parse_packet(newpkt):
     valid = False
     src = ext_src = dest = panid = nwk_src = nwk_ext = None
     if newpkt.haslayer(UDP) and newpkt[UDP].dport == 52001:
-        pkt = Dot15d4FCS(newpkt.load)
+        try:
+            pkt = Dot15d4FCS(newpkt.load)
 
-        computed_fcs = pkt.compute_fcs(pkt.original[:-2])
-        computed_fcs_value = struct.unpack('<H', computed_fcs)[0]
+            pkt_raw = raw(pkt)
 
-        if pkt.haslayer(Dot15d4Data) and hasattr(pkt, 'src_addr'):
-            src = "{0:#06x}".format(pkt.src_addr)
-            dest = "{0:#06x}".format(pkt.dest_addr)
-            panid = "{0:#06x}".format(pkt.dest_panid)
-            valid = True
+            computed_fcs = pkt.compute_fcs(pkt.original[:-2])
+            computed_fcs_value = struct.unpack('<H', computed_fcs)[0]
 
-        elif pkt.haslayer(Dot15d4Cmd) and hasattr(pkt, 'cmd_id') and pkt.cmd_id == 4:
-            src = "{0:#06x}".format(pkt.src_addr)
-            dest = "{0:#06x}".format(pkt.dest_addr)
-            panid = "{0:#06x}".format(pkt.dest_panid)
-            valid = True
+            if pkt.haslayer(Dot15d4Data) and hasattr(pkt, 'src_addr'):
+                #src = "{0:#06x}".format(pkt.src_addr)
+                #dest = "{0:#06x}".format(pkt.dest_addr)
+                #panid = "{0:#06x}".format(pkt.dest_panid)
+                src = pkt[Dot15d4Data].get_field('src_addr').i2repr(pkt, pkt.src_addr)
+                dest = pkt[Dot15d4Data].get_field('dest_addr').i2repr(pkt, pkt.dest_addr)
+                panid = pkt[Dot15d4Data].get_field('dest_panid').i2repr(pkt, pkt.dest_panid)
+                valid = True
 
-        # Pull from security header instead of NWK because its consistently available and corresponds
-        # to the short addr in the MAC layer, NWK corresponds to short NWK addr, which may not be the same
-        if pkt.haslayer(ZigbeeSecurityHeader):
-            es_field = pkt[ZigbeeSecurityHeader].get_field('source')
-            ext_src = es_field.i2repr(pkt, pkt[ZigbeeSecurityHeader].source)
+            elif pkt.haslayer(Dot15d4Cmd) and hasattr(pkt, 'cmd_id') and pkt.cmd_id == 4:
+                #src = "{0:#06x}".format(pkt.src_addr)
+                #dest = "{0:#06x}".format(pkt.dest_addr)
+                #panid = "{0:#06x}".format(pkt.dest_panid)
+                src = pkt[Dot15d4Cmd].get_field('src_addr').i2repr(pkt, pkt.src_addr)
+                dest = pkt[Dot15d4Cmd].get_field('dest_addr').i2repr(pkt, pkt.dest_addr)
+                panid = pkt[Dot15d4Cmd].get_field('dest_panid').i2repr(pkt, pkt.dest_panid)
+                valid = True
 
-        if pkt.haslayer(ZigbeeNWK) and pkt[ZigbeeNWK].ext_src is not None and pkt.src_addr != pkt[ZigbeeNWK].source:
-            nwk_src = "{0:#06x}".format(pkt[ZigbeeNWK].source)
+            # Pull from security header instead of NWK because its consistently available and corresponds
+            # to the short addr in the MAC layer, NWK corresponds to short NWK addr, which may not be the same
+            if pkt.haslayer(ZigbeeSecurityHeader):
+                es_field = pkt[ZigbeeSecurityHeader].get_field('source')
+                ext_src = es_field.i2repr(pkt, pkt[ZigbeeSecurityHeader].source)
 
-            nes_field = pkt[ZigbeeNWK].get_field('ext_src')
-            nwk_ext = nes_field.i2repr(pkt, pkt[ZigbeeNWK].ext_src)
-            
-        if computed_fcs_value != pkt.fcs:
-            valid = False
+            if pkt.haslayer(ZigbeeNWK) and pkt[ZigbeeNWK].ext_src is not None and pkt.src_addr != pkt[ZigbeeNWK].source:
+                #nwk_src = "{0:#06x}".format(pkt[ZigbeeNWK].source)
+                nwk_src = pkt[ZigbeeNWK].get_field('source').i2repr(pkt, pkt[ZigbeeNWK].source)
 
-        if src is not None and len(src) > 6:
-            valid = False   # Traffic here is when a device has no short, and uses extended in its place before it gets
-                            # a short asisgned, good indicator that pan id conflict not underway, too much investment
-                            # for now but good for capstone
+                nes_field = pkt[ZigbeeNWK].get_field('ext_src')
+                nwk_ext = nes_field.i2repr(pkt, pkt[ZigbeeNWK].ext_src)
+                
+            if computed_fcs_value != pkt.fcs:
+                valid = False
 
-        if valid:
-            #session = db.createDBSession()
-            db.createPacket(session, rectime, panid, src, dest, ext_src, nwk_src, nwk_ext)
-            #session.close()
+            if src is not None and len(src) > 6 and not pkt.haslayer(ZigbeeZLLCommissioningCluster):
+                valid = False   # Traffic here is when a device has no short, and uses extended in its place before it gets
+                                # a short asisgned, good indicator that pan id conflict not underway, too much investment
+                                # for now but good for capstone
+
+            if valid:
+                #session = db.createDBSession()
+                db.createPacket(session, rectime, panid, src, dest, pkt_raw, ext_src, nwk_src, nwk_ext)
+                #session.close()
+        except TypeError as e:
+            print("TypeError raised: Likely malformed packet")
+            pass
 
 
 def start_sniff(e):
