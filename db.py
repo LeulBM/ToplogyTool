@@ -88,6 +88,10 @@ def createPacket(session, packet_time, pan_id, source_id, destination_id, pkt_ra
 
 def queryPacket(session):
     packet = session.query(Packets).filter_by(parsed=False).order_by(Packets.packet_id.asc()).first()
+    #TODO Test if this allows multiple parsing threads
+    if packet:
+        packet.parsed = True
+        session.commit()
     return packet
 
 

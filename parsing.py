@@ -142,9 +142,14 @@ def get_valid_zll():
     finally:
         return valid
 
-def get_scan_id(pkt):
-    return pkt[ZLLScanRequest].get_field('inter_pan_transaction_id')\
-            .i2repr(pkt, pkt.inter_pan_transaction_id)
+def get_scan_id(pkt, pkt_type):
+    if pkt_type  == 'request':
+        return pkt[ZLLScanRequest].get_field('inter_pan_transaction_id')\
+                .i2repr(pkt, pkt.inter_pan_transaction_id)
+    elif pkt_type == 'response':
+        return pkt[ZLLScanResponse].get_field('inter_pan_transaction_id')\
+                .i2repr(pkt, pkt.inter_pan_transaction_id)
+
 
 def parse_zll(session, pkt, spkt, auth_zll):
     global LAST_TRANSACTION
@@ -156,7 +161,7 @@ def parse_zll(session, pkt, spkt, auth_zll):
 
     if source not in auth_zll:  # Unauthorized source, ID attack
         if spkt.haslayer(ZLLScanRequest):  # SCAN 
-            t_id = get_scan_id(spkt)
+            t_id = get_scan_id(spkt, 'request')
 
             if t_id != LAST_TRANSACTION:
                 LAST_TRANSACTION = t_id
@@ -164,8 +169,19 @@ def parse_zll(session, pkt, spkt, auth_zll):
                         (pkt.source_id))
 
         elif spkt.haslayer(ZLLScanResponse):    #SCAN RESPONSE
-            target_device = db.queryDevice(session, extended_source_id=pkt.source_id)
+            
+            scan_requestor = pkt.destination_id
+            t_id = get_scan_id(spkt, 'response')
 
+            # Secondary Check for Scan Requests
+            if scan_requestor not in auth_zll:
+                if t_id != LAST_TRANSACTION:
+                    LAST_TRANSACTION = t_id
+                    alerts.append('TOUCHLINK: Scan Response indicates attempted scan by unauthorized user %s' %
+                            (scan_requestor))
+
+            # Check for resets
+            target_device = db.queryDevice(session, extended_source_id=pkt.source_id)
             victim_pan = spkt[Dot15d4Data].get_field('src_panid').i2repr(spkt, spkt.src_panid)
 
             if target_device is not None:
@@ -243,7 +259,7 @@ def parse(e):
             alerts.extend(map_alerts)
             raise_alerts(session, alerts)
 
-            db.parsedPacket(session, pkt)
+            #db.parsedPacket(session, pkt)
 
 
 if __name__ == '__main__':
